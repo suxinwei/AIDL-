@@ -1,0 +1,15 @@
+#工程根目录
+/.gradle
+/.idea
+/gradle
+/local.properties
+
+#所有目录
+build
+*.orig
+*.iml
+.externalNativeBuild
+
+#电脑系统
+.DS_Store
+.scannerwork
