@@ -1,13 +1,11 @@
+// ThirdPartPayResult.aidl
 package com.alibaba.alipay;
 
-interface ThirdPartPayResult {
-    /*
-    支付成功的回调
-    */
-    void onPaySuccess();
-         /*
-    支付失败的回调
-    */
-    void onPayFaild(in int errorCode , in String msg);
+// Declare any non-default types here with import statements
 
+interface ThirdPartPayResult {
+
+    void onPaySuccess();
+
+    void onPayFaild(int errorCode, String msg);
 }

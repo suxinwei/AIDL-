@@ -10,44 +10,61 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import com.heytap.smarthome.domain.net.cloudstorage.NetCallback;
+import com.heytap.smarthome.domain.net.cloudstorage.NetManager;
 
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.alibaba.alipay.ThirdPartPayAction;
-import com.alibaba.alipay.ThirdPartPayResult;
 
 public class ClientActivity extends AppCompatActivity {
 
     private static final String TAG = "Client MainActivity";
 
-    private AlipayConnection alipayConnection;
+    private NetConnection mNetConnection;
     private boolean isBind;
-    private ThirdPartPayAction thirdPartPayAction;
+    private NetManager mNetManager;
     private TextView tvTitle;
     private TextView tvMoney;
+
+    static {
+        System.loadLibrary("jni_test");
+    }
+
+    class Person {
+        public String name;
+        public int age;
+
+        @Override
+        public String toString() {
+            return "Person{" +
+                    "name='" + name + '\'' +
+                    ", age=" + age +
+                    '}';
+        }
+    }
+
+
+    public native Person test(Person person);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_client);
 
-        bindAlipayService();
+        bindNetService();
         initView();
     }
 
-    /**
-     * 綁定支付寶的服務，在现在开发中，其实这部分动作是由支付宝的 SDK 完成
-     */
-    private void bindAlipayService() {
+    private void bindNetService() {
 
         Intent intent = new Intent();
-        intent.setAction("com.alibaba.alipay.THIRD_PART_PAY");//复制服务端的action 和包名,建議提取至全局
+        intent.setAction("com.heytap.smarthome.CLOUD_STORAGE");
         intent.setPackage("com.example.suxinwei.androidtest");
 
-        alipayConnection = new AlipayConnection();
 
-        isBind = bindService(intent, alipayConnection, BIND_AUTO_CREATE);
+        mNetConnection = new NetConnection();
+
+        isBind = bindService(intent, mNetConnection, BIND_AUTO_CREATE);
 
         Log.d(TAG, "Client bind service ....");
     }
@@ -61,60 +78,49 @@ public class ClientActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                if (thirdPartPayAction != null) {
-                    //进行充值
-                    try {
-                        thirdPartPayAction.requestPay("充值100QB", 100, new PayCallBack());
-                    } catch (RemoteException e) {
-                        e.printStackTrace();
-                    }
+                Person person = new Person();
+                person.name = "aaa";
+                person.age = 1;
+                Person newPerson = test(person);
 
+                Log.e("jni", "oldPerson:" + person.toString());
+                if (newPerson != null) {
+                    Log.e("jni", "newPerson:" + newPerson.toString());
                 }
+
+//                if (mNetManager != null) {
+//                    try {
+//                        mNetManager.access(1, 2, "", new NetCallbackImpl());
+//                    } catch (RemoteException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                }
 
             }
         });
 
     }
 
-    private class PayCallBack extends ThirdPartPayResult.Stub {
+    private class NetCallbackImpl extends NetCallback.Stub {
 
         @Override
-        public void onPaySuccess() throws RemoteException {
-            //支付成功，修改 UI内容
-            //实际上是取修改数据库，其实支付宝是通过回调URL地址，直接通知我们的后台服务器，后台返回我们客户端进行通知
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    tvMoney.setText("100");
-
-                    Log.d(TAG, "Client onPaySuccess() -----充值成功 !");
-
-                    Toast.makeText(getBaseContext(), "充值成功！", Toast.LENGTH_SHORT).show();
-                }
-            });
+        public void onSuccess(int type, int id, int code, String jsonResponse) throws RemoteException {
+            Log.e("sxw", "onSuccess");
         }
 
         @Override
-        public void onPayFaild(int errorCode, String msg) throws RemoteException {
-
-            Log.d(TAG, "Client onPayFaild() ----- errorCode:" + errorCode + "---msg:" + msg);
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(getBaseContext(), "充值失敗！", Toast.LENGTH_SHORT).show();
-                }
-            });
+        public void onFailed(int type, int id, int code, String errorMsg) throws RemoteException {
+            Log.e("sxw", "onFailed");
         }
     }
 
-    private class AlipayConnection implements ServiceConnection {
+    private class NetConnection implements ServiceConnection {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
 
-            //获取支付宝的服务
-            thirdPartPayAction = ThirdPartPayAction.Stub.asInterface(service);
+            mNetManager = NetManager.Stub.asInterface(service);
             Log.d(TAG, "Client onServiceConnected----->" + name);
         }
 
@@ -127,10 +133,10 @@ public class ClientActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (isBind && alipayConnection != null) {
-            unbindService(alipayConnection);
+        if (isBind && mNetConnection != null) {
+            unbindService(mNetConnection);
             Log.d(TAG, "Client unbind service ....");
-            alipayConnection = null;
+            mNetConnection = null;
             isBind = false;
         }
     }
